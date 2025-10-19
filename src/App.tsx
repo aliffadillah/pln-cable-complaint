@@ -1,6 +1,18 @@
+import { useState } from 'react'
 import './App.css'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import { useAuth } from './context/AuthContext'
 
 function App() {
+  const [showLogin, setShowLogin] = useState(false)
+  const { isAuthenticated } = useAuth()
+
+  // If user is authenticated, show dashboard
+  if (isAuthenticated) {
+    return <Dashboard />
+  }
+
   return (
     <div className="app">
       {/* Header */}
@@ -13,7 +25,9 @@ function App() {
               <p>Sistem Pengaduan Kabel</p>
             </div>
           </div>
-          <button className="nav-button">Masuk</button>
+          <button className="nav-button" onClick={() => setShowLogin(true)}>
+            Masuk
+          </button>
         </div>
       </header>
 
@@ -29,8 +43,12 @@ function App() {
               kabel listrik. Cepat, efisien, dan transparan.
             </p>
             <div className="hero-buttons">
-              <button className="btn-primary">Buat Laporan</button>
-              <button className="btn-secondary">Cek Status</button>
+              <button className="btn-primary" onClick={() => setShowLogin(true)}>
+                Buat Laporan
+              </button>
+              <button className="btn-secondary" onClick={() => setShowLogin(true)}>
+                Cek Status
+              </button>
             </div>
           </div>
           <div className="hero-image">
@@ -109,7 +127,9 @@ function App() {
             Bergabunglah dengan ribuan pengguna yang telah merasakan 
             kemudahan sistem pengaduan PLN Care.
           </p>
-          <button className="btn-primary">Mulai Sekarang</button>
+          <button className="btn-primary" onClick={() => setShowLogin(true)}>
+            Mulai Sekarang
+          </button>
         </div>
       </section>
 
@@ -153,6 +173,9 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Login Modal */}
+      {showLogin && <Login onClose={() => setShowLogin(false)} />}
     </div>
   )
 }

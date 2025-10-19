@@ -1,0 +1,105 @@
+// Prisma Schema for PLN Care System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN_UTAMA      // Admin Utama - Full access
+  PETUGAS_LAPANGAN // Petugas Lapangan - Limited access
+}
+
+enum ComplaintStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(PETUGAS_LAPANGAN)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  complaints       Complaint[] @relation("UserComplaints")
+  assignedTasks    Complaint[] @relation("AssignedOfficer")
+  activityLogs     ActivityLog[]
+  
+  @@map("users")
+}
+
+model Complaint {
+  id          String            @id @default(uuid())
+  title       String
+  description String
+  location    String
+  latitude    Float?
+  longitude   Float?
+  status      ComplaintStatus   @default(PENDING)
+  priority    ComplaintPriority @default(MEDIUM)
+  images      String[]          @default([])
+  
+  // Reporter Information
+  reporterId  String
+  reporter    User              @relation("UserComplaints", fields: [reporterId], references: [id])
+  
+  // Assigned Officer
+  assignedTo  String?
+  officer     User?             @relation("AssignedOfficer", fields: [assignedTo], references: [id])
+  
+  // Timestamps
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  resolvedAt  DateTime?
+  
+  // Relations
+  updates     ComplaintUpdate[]
+  
+  @@map("complaints")
+}
+
+model ComplaintUpdate {
+  id          String      @id @default(uuid())
+  complaintId String
+  complaint   Complaint   @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  
+  message     String
+  images      String[]    @default([])
+  status      ComplaintStatus
+  
+  createdAt   DateTime    @default(now())
+  
+  @@map("complaint_updates")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  action      String   // LOGIN, LOGOUT, CREATE_COMPLAINT, UPDATE_COMPLAINT, etc.
+  details     String?
+  ipAddress   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("activity_logs")
+}
