@@ -72,30 +72,6 @@ function App() {
               </p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon">🔔</div>
-              <h3>Notifikasi Real-time</h3>
-              <p>
-                Dapatkan update langsung mengenai status pengaduan Anda 
-                melalui notifikasi real-time.
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📊</div>
-              <h3>Tracking Transparan</h3>
-              <p>
-                Pantau progress penanganan dari awal hingga selesai dengan 
-                sistem tracking yang transparan.
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🛡️</div>
-              <h3>Aman & Terpercaya</h3>
-              <p>
-                Data Anda terlindungi dengan enkripsi tingkat tinggi. 
-                Privasi dan keamanan adalah prioritas kami.
-              </p>
-            </div>
-            <div className="feature-card">
               <div className="feature-icon">⚙️</div>
               <h3>Respons Cepat</h3>
               <p>
