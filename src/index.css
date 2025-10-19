@@ -1,0 +1,39 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* PLN Color Palette */
+  --primary-blue: #0066B3;
+  --dark-blue: #004A7F;
+  --light-blue: #0088D1;
+  --white: #FFFFFF;
+  --gray-light: #F5F7FA;
+  --gray-medium: #E5E7EB;
+  --gray-dark: #6B7280;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  
+  font-family: 'Inter', 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--text-primary);
+  background-color: var(--white);
+}
+
+#root {
+  min-height: 100vh;
+}
