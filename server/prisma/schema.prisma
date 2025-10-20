@@ -11,14 +11,22 @@ datasource db {
 
 enum Role {
   ADMIN_UTAMA      // Admin Utama - Full access
+  SUPERVISOR       // Supervisor - Can review and assign
   PETUGAS_LAPANGAN // Petugas Lapangan - Limited access
 }
 
 enum ComplaintStatus {
-  PENDING
-  IN_PROGRESS
-  RESOLVED
-  REJECTED
+  PENDING           // Complaint baru masuk
+  REVIEWED          // Admin sudah review
+  ASSIGNED          // Sudah di-assign ke petugas
+  ON_THE_WAY        // Petugas dalam perjalanan
+  WORKING           // Petugas sedang mengerjakan
+  COMPLETED         // Petugas selesai, menunggu approval
+  APPROVED          // Admin approve laporan
+  REVISION_NEEDED   // Admin minta revisi
+  RESOLVED          // Kasus selesai
+  REJECTED          // Ditolak
+  CANCELLED         // Dibatalkan
 }
 
 enum ComplaintPriority {
@@ -28,6 +36,13 @@ enum ComplaintPriority {
   URGENT
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REVISION_NEEDED
+  REJECTED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -35,21 +50,24 @@ model User {
   name      String
   role      Role     @default(PETUGAS_LAPANGAN)
   isActive  Boolean  @default(true)
+  phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  complaints       Complaint[] @relation("UserComplaints")
-  assignedTasks    Complaint[] @relation("AssignedOfficer")
-  activityLogs     ActivityLog[]
+  complaints          Complaint[]   @relation("UserComplaints")
+  assignedTasks       Complaint[]   @relation("AssignedOfficer")
+  activityLogs        ActivityLog[]
+  reviewedWorkReports WorkReport[]  @relation("ReviewedBy")
   
   @@map("users")
 }
 
 model Complaint {
   id          String            @id @default(uuid())
+  ticketNumber String           @unique // Nomor tiket unik untuk tracking
   title       String
-  description String
+  description String            @db.Text
   location    String
   latitude    Float?
   longitude   Float?
@@ -57,13 +75,22 @@ model Complaint {
   priority    ComplaintPriority @default(MEDIUM)
   images      String[]          @default([])
   
-  // Reporter Information
-  reporterId  String
-  reporter    User              @relation("UserComplaints", fields: [reporterId], references: [id])
+  // Public or Internal complaint
+  isPublic    Boolean           @default(false)
+  
+  // Reporter Information (for public complaints)
+  reporterName  String?
+  reporterEmail String?
+  reporterPhone String?
+  
+  // For internal complaints (logged-in users)
+  reporterId  String?
+  reporter    User?             @relation("UserComplaints", fields: [reporterId], references: [id])
   
   // Assigned Officer
   assignedTo  String?
   officer     User?             @relation("AssignedOfficer", fields: [assignedTo], references: [id])
+  assignedAt  DateTime?
   
   // Timestamps
   createdAt   DateTime          @default(now())
@@ -72,6 +99,7 @@ model Complaint {
   
   // Relations
   updates     ComplaintUpdate[]
+  workReport  WorkReport?
   
   @@map("complaints")
 }
@@ -90,13 +118,49 @@ model ComplaintUpdate {
   @@map("complaint_updates")
 }
 
+model WorkReport {
+  id              String       @id @default(uuid())
+  complaintId     String       @unique
+  complaint       Complaint    @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  
+  // Work details
+  workStartTime   DateTime
+  workEndTime     DateTime
+  workDescription String       @db.Text
+  materialsUsed   Json?        // Array of materials {name, quantity, unit}
+  laborCost       Float?
+  materialCost    Float?
+  totalCost       Float?
+  
+  // Photos
+  beforePhotos    String[]     @default([])
+  afterPhotos     String[]     @default([])
+  
+  // Additional info
+  notes           String?      @db.Text
+  technicianNotes String?      @db.Text
+  
+  // Review
+  reviewStatus    ReviewStatus @default(PENDING)
+  reviewedBy      String?
+  reviewer        User?        @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+  reviewNotes     String?      @db.Text
+  reviewedAt      DateTime?
+  
+  // Timestamps
+  submittedAt     DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@map("work_reports")
+}
+
 model ActivityLog {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   
   action      String   // LOGIN, LOGOUT, CREATE_COMPLAINT, UPDATE_COMPLAINT, etc.
-  details     String?
+  details     String?  @db.Text
   ipAddress   String?
   
   createdAt   DateTime @default(now())

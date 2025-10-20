@@ -4,6 +4,8 @@ import dotenv from 'dotenv'
 import authRoutes from './routes/auth.js'
 import userRoutes from './routes/users.js'
 import complaintRoutes from './routes/complaints.js'
+import publicRoutes from './routes/public.js'
+import workReportRoutes from './routes/workReports.js'
 
 // Load environment variables
 dotenv.config()
@@ -16,13 +18,15 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/complaints', complaintRoutes)
+app.use('/api/public', publicRoutes)
+app.use('/api/work-reports', workReportRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

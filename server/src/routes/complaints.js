@@ -107,7 +107,14 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 })
 
-// Create complaint
+// Generate unique ticket number
+function generateTicketNumber() {
+  const year = new Date().getFullYear()
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0')
+  return `PLN-${year}-${random}`
+}
+
+// Create complaint (Internal - with login)
 router.post('/', authenticate, async (req, res) => {
   try {
     const { 
@@ -116,22 +123,47 @@ router.post('/', authenticate, async (req, res) => {
       location, 
       latitude, 
       longitude, 
-      priority 
+      priority,
+      images
     } = req.body
 
     if (!title || !description || !location) {
       return res.status(400).json({ error: 'Required fields missing' })
     }
 
+    // Validate images (optional)
+    let imageArray = []
+    if (images && Array.isArray(images)) {
+      if (images.length > 5) {
+        return res.status(400).json({ error: 'Maksimal 5 foto' })
+      }
+      imageArray = images
+    }
+
+    // Generate unique ticket number
+    let ticketNumber
+    let isUnique = false
+    
+    while (!isUnique) {
+      ticketNumber = generateTicketNumber()
+      const existing = await prisma.complaint.findUnique({
+        where: { ticketNumber }
+      })
+      if (!existing) isUnique = true
+    }
+
     const complaint = await prisma.complaint.create({
       data: {
+        ticketNumber,
         title,
         description,
         location,
         latitude,
         longitude,
         priority: priority || 'MEDIUM',
-        reporterId: req.user.id
+        reporterId: req.user.id,
+        isPublic: false,
+        images: imageArray
       },
       include: {
         reporter: {
@@ -141,6 +173,15 @@ router.post('/', authenticate, async (req, res) => {
             email: true
           }
         }
+      }
+    })
+
+    // Create initial update
+    await prisma.complaintUpdate.create({
+      data: {
+        complaintId: complaint.id,
+        message: 'Complaint created',
+        status: 'PENDING'
       }
     })
 
@@ -160,6 +201,136 @@ router.post('/', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Create complaint error:', error)
     res.status(500).json({ error: 'Failed to create complaint' })
+  }
+})
+
+// Assign complaint to officer (Admin only)
+router.post('/:id/assign', authenticate, isAdminUtama, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { assignedTo } = req.body
+
+    if (!assignedTo) {
+      return res.status(400).json({ error: 'assignedTo is required' })
+    }
+
+    // Check if officer exists
+    const officer = await prisma.user.findUnique({
+      where: { id: assignedTo }
+    })
+
+    if (!officer) {
+      return res.status(404).json({ error: 'Officer not found' })
+    }
+
+    if (officer.role !== 'PETUGAS_LAPANGAN') {
+      return res.status(400).json({ error: 'User is not a field officer' })
+    }
+
+    const complaint = await prisma.complaint.update({
+      where: { id },
+      data: {
+        assignedTo,
+        assignedAt: new Date(),
+        status: 'ASSIGNED'
+      },
+      include: {
+        officer: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    })
+
+    // Add update
+    await prisma.complaintUpdate.create({
+      data: {
+        complaintId: id,
+        message: `Ditugaskan kepada ${officer.name}`,
+        status: 'ASSIGNED'
+      }
+    })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'ASSIGN_COMPLAINT',
+        details: `Assigned complaint ${complaint.ticketNumber} to ${officer.name}`
+      }
+    })
+
+    res.json({ 
+      message: 'Complaint assigned successfully',
+      complaint 
+    })
+  } catch (error) {
+    console.error('Assign complaint error:', error)
+    res.status(500).json({ error: 'Failed to assign complaint' })
+  }
+})
+
+// Update complaint status (Petugas or Admin)
+router.put('/:id/status', authenticate, isPetugasOrAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status, message } = req.body
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' })
+    }
+
+    const complaint = await prisma.complaint.findUnique({
+      where: { id }
+    })
+
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' })
+    }
+
+    // Check permission for Petugas
+    if (req.user.role === 'PETUGAS_LAPANGAN' && complaint.assignedTo !== req.user.id) {
+      return res.status(403).json({ error: 'Not assigned to this complaint' })
+    }
+
+    const updateData = {
+      status,
+      updatedAt: new Date()
+    }
+
+    if (status === 'RESOLVED') {
+      updateData.resolvedAt = new Date()
+    }
+
+    const updatedComplaint = await prisma.complaint.update({
+      where: { id },
+      data: updateData
+    })
+
+    // Add update
+    await prisma.complaintUpdate.create({
+      data: {
+        complaintId: id,
+        message: message || `Status updated to ${status}`,
+        status
+      }
+    })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'UPDATE_STATUS',
+        details: `Updated complaint ${complaint.ticketNumber} status to ${status}`
+      }
+    })
+
+    res.json({ 
+      message: 'Status updated successfully',
+      complaint: updatedComplaint
+    })
+  } catch (error) {
+    console.error('Update status error:', error)
+    res.status(500).json({ error: 'Failed to update status' })
   }
 })
 
