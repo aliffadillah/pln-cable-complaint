@@ -121,6 +121,20 @@ export const complaintsApi = {
     })
   },
 
+  assign: async (id: string, assignedTo: string) => {
+    return apiCall(`/complaints/${id}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ assignedTo }),
+    })
+  },
+
+  updateStatus: async (id: string, status: string, message?: string) => {
+    return apiCall(`/complaints/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, message }),
+    })
+  },
+
   delete: async (id: string) => {
     return apiCall(`/complaints/${id}`, { method: 'DELETE' })
   },
@@ -134,5 +148,113 @@ export const complaintsApi = {
 
   getStats: async () => {
     return apiCall('/complaints/stats/overview')
+  },
+}
+
+// Work Reports API
+export const workReportsApi = {
+  getAll: async (params?: { status?: string; complaintId?: string }) => {
+    const query = new URLSearchParams(params as Record<string, string>).toString()
+    return apiCall(`/work-reports${query ? `?${query}` : ''}`)
+  },
+
+  getById: async (id: string) => {
+    return apiCall(`/work-reports/${id}`)
+  },
+
+  create: async (data: {
+    complaintId: string
+    workStartTime: string
+    workEndTime: string
+    workDescription: string
+    materialsUsed?: any[]
+    laborCost?: number
+    materialCost?: number
+    notes?: string
+    technicianNotes?: string
+    beforePhotos?: string[]
+    afterPhotos?: string[]
+  }) => {
+    return apiCall('/work-reports', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update: async (id: string, data: Partial<{
+    workStartTime: string
+    workEndTime: string
+    workDescription: string
+    materialsUsed: any[]
+    laborCost: number
+    materialCost: number
+    notes: string
+    technicianNotes: string
+    beforePhotos: string[]
+    afterPhotos: string[]
+  }>) => {
+    return apiCall(`/work-reports/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  review: async (id: string, reviewStatus: string, reviewNotes?: string) => {
+    return apiCall(`/work-reports/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ reviewStatus, reviewNotes }),
+    })
+  },
+}
+
+// Public API (no authentication required)
+export const publicApi = {
+  createComplaint: async (data: {
+    title: string
+    description: string
+    location: string
+    reporterName: string
+    reporterEmail: string
+    reporterPhone: string
+    latitude?: number
+    longitude?: number
+    priority?: string
+  }) => {
+    const response = await fetch(`${API_URL}/public/complaints`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to create complaint')
+    }
+    
+    return response.json()
+  },
+
+  trackComplaint: async (ticketNumber: string) => {
+    const response = await fetch(`${API_URL}/public/complaints/${ticketNumber}`)
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to fetch complaint')
+    }
+    
+    return response.json()
+  },
+
+  getStats: async () => {
+    const response = await fetch(`${API_URL}/public/stats`)
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to fetch stats')
+    }
+    
+    return response.json()
   },
 }

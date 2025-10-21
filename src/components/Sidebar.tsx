@@ -15,9 +15,18 @@ interface SidebarProps {
   isAdmin: boolean
   isPetugas: boolean
   onLogout: () => void
+  activeSection?: string
+  onSectionChange?: (section: string) => void
 }
 
-function Sidebar({ isOpen, onClose, isAdmin, isPetugas, onLogout }: SidebarProps) {
+function Sidebar({ isOpen, onClose, isAdmin, isPetugas, onLogout, activeSection = 'overview', onSectionChange }: SidebarProps) {
+  const handleSectionClick = (section: string) => {
+    if (onSectionChange) {
+      onSectionChange(section);
+    }
+    onClose();
+  };
+
   return (
     <aside className={`sidebar ${isOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
@@ -31,34 +40,52 @@ function Sidebar({ isOpen, onClose, isAdmin, isPetugas, onLogout }: SidebarProps
       </div>
 
       <nav className="sidebar-nav">
-        <a href="#overview" className="nav-item active" onClick={onClose}>
+        <button 
+          className={`nav-item ${activeSection === 'overview' ? 'active' : ''}`} 
+          onClick={() => handleSectionClick('overview')}
+        >
           <LayoutDashboard className="nav-icon" size={20} />
           <span className="nav-text">Overview</span>
-        </a>
-        <a href="#complaints" className="nav-item" onClick={onClose}>
+        </button>
+        <button 
+          className={`nav-item ${activeSection === 'complaints' ? 'active' : ''}`}
+          onClick={() => handleSectionClick('complaints')}
+        >
           <FileText className="nav-icon" size={20} />
           <span className="nav-text">Pengaduan</span>
-        </a>
+        </button>
         {isAdmin && (
-          <a href="#users" className="nav-item" onClick={onClose}>
+          <button 
+            className={`nav-item ${activeSection === 'users' ? 'active' : ''}`}
+            onClick={() => handleSectionClick('users')}
+          >
             <Users className="nav-icon" size={20} />
             <span className="nav-text">Pengguna</span>
-          </a>
+          </button>
         )}
         {isPetugas && (
-          <a href="#tasks" className="nav-item" onClick={onClose}>
+          <button 
+            className={`nav-item ${activeSection === 'tasks' ? 'active' : ''}`}
+            onClick={() => handleSectionClick('tasks')}
+          >
             <CheckSquare className="nav-icon" size={20} />
             <span className="nav-text">Tugas Saya</span>
-          </a>
+          </button>
         )}
-        <a href="#reports" className="nav-item" onClick={onClose}>
+        <button 
+          className={`nav-item ${activeSection === 'reports' ? 'active' : ''}`}
+          onClick={() => handleSectionClick('reports')}
+        >
           <BarChart3 className="nav-icon" size={20} />
           <span className="nav-text">Laporan</span>
-        </a>
-        <a href="#settings" className="nav-item" onClick={onClose}>
+        </button>
+        <button 
+          className={`nav-item ${activeSection === 'settings' ? 'active' : ''}`}
+          onClick={() => handleSectionClick('settings')}
+        >
           <Settings className="nav-icon" size={20} />
           <span className="nav-text">Pengaturan</span>
-        </a>
+        </button>
       </nav>
 
       <div className="sidebar-footer">

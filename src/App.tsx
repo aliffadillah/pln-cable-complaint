@@ -1,17 +1,16 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
+import AdminDashboard from './pages/AdminDashboard'
+import PublicComplaint from './pages/PublicComplaint'
+import TrackComplaint from './pages/TrackComplaint'
+import FieldOfficerDashboard from './pages/FieldOfficerDashboard'
 import { useAuth } from './context/AuthContext'
 
-function App() {
+function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
-  const { isAuthenticated } = useAuth()
-
-  // If user is authenticated, show dashboard
-  if (isAuthenticated) {
-    return <Dashboard />
-  }
+  const navigate = useNavigate()
 
   return (
     <div className="app">
@@ -25,9 +24,14 @@ function App() {
               <p>Sistem Pengaduan Kabel</p>
             </div>
           </div>
-          <button className="nav-button" onClick={() => setShowLogin(true)}>
-            Masuk
-          </button>
+          <div className="nav-buttons">
+            <button className="nav-button-outline" onClick={() => navigate('/track')}>
+              Lacak Laporan
+            </button>
+            <button className="nav-button" onClick={() => setShowLogin(true)}>
+              Masuk
+            </button>
+          </div>
         </div>
       </header>
 
@@ -43,10 +47,10 @@ function App() {
               kabel listrik. Cepat, efisien, dan transparan.
             </p>
             <div className="hero-buttons">
-              <button className="btn-primary" onClick={() => setShowLogin(true)}>
+              <button className="btn-primary" onClick={() => navigate('/public-complaint')}>
                 Buat Laporan
               </button>
-              <button className="btn-secondary" onClick={() => setShowLogin(true)}>
+              <button className="btn-secondary" onClick={() => navigate('/track')}>
                 Cek Status
               </button>
             </div>
@@ -127,7 +131,7 @@ function App() {
             Bergabunglah dengan ribuan pengguna yang telah merasakan 
             kemudahan sistem pengaduan PLN Care.
           </p>
-          <button className="btn-primary" onClick={() => setShowLogin(true)}>
+          <button className="btn-primary" onClick={() => navigate('/public-complaint')}>
             Mulai Sekarang
           </button>
         </div>
@@ -177,6 +181,38 @@ function App() {
       {/* Login Modal */}
       {showLogin && <Login onClose={() => setShowLogin(false)} />}
     </div>
+  )
+}
+
+function App() {
+  const { isAuthenticated, user } = useAuth()
+
+  // Redirect to appropriate dashboard based on role
+  const getDashboard = () => {
+    if (!isAuthenticated) return <LandingPage />
+    
+    if (user?.role === 'PETUGAS_LAPANGAN') {
+      return <FieldOfficerDashboard />
+    }
+    
+    return <AdminDashboard />
+  }
+
+  return (
+    <Router>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={getDashboard()} />
+        <Route path="/public-complaint" element={<PublicComplaint />} />
+        <Route path="/track" element={<TrackComplaint />} />
+        <Route path="/track/:ticketNumber" element={<TrackComplaint />} />
+        
+        {/* Protected routes */}
+        <Route path="/dashboard" element={isAuthenticated ? getDashboard() : <LandingPage />} />
+        <Route path="/admin" element={isAuthenticated && user?.role !== 'PETUGAS_LAPANGAN' ? <AdminDashboard /> : <LandingPage />} />
+        <Route path="/field-officer" element={isAuthenticated && user?.role === 'PETUGAS_LAPANGAN' ? <FieldOfficerDashboard /> : <LandingPage />} />
+      </Routes>
+    </Router>
   )
 }
 

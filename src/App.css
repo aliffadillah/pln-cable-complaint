@@ -1,6 +1,7 @@
 .app {
   min-height: 100vh;
   overflow-x: hidden;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Header */
@@ -56,6 +57,12 @@
   font-weight: 500;
 }
 
+.nav-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .nav-button {
   background-color: var(--primary-blue);
   color: var(--white);
@@ -78,6 +85,25 @@
 
 .nav-button:active {
   transform: translateY(-1px);
+}
+
+.nav-button-outline {
+  background-color: transparent;
+  color: var(--primary-blue);
+  border: 2px solid var(--primary-blue);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-button-outline:hover {
+  background-color: var(--primary-blue);
+  color: white;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 102, 179, 0.35);
 }
 
 /* Hero Section */
