@@ -190,7 +190,8 @@
 }
 
 .content {
-  padding: 2rem;
+  padding: 2rem 3rem;
+  max-width: 100%;
 }
 
 .dashboard-header-mobile {
@@ -207,6 +208,8 @@
 .reports-section,
 .settings-section {
   min-height: calc(100vh - 200px);
+  width: 100%;
+  max-width: none;
 }
 
 .section-info {
@@ -251,6 +254,8 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
+  max-width: none;
 }
 
 .stat-card {
@@ -260,9 +265,12 @@
   border: 1px solid #e8ecef;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 1.25rem;
   transition: all 0.3s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  min-height: 120px;
+  width: 100%;
 }
 
 .stat-card:hover {
@@ -301,17 +309,38 @@
   color: #10b981;
 }
 
-.stat-info h3 {
-  font-size: 2rem;
-  color: #0066cc;
-  margin-bottom: 0.25rem;
-  font-weight: 700;
+.stat-icon.red {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
-.stat-info p {
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.stat-info .stat-title {
   color: #6b7280;
   font-size: 0.875rem;
   font-weight: 500;
+  margin: 0;
+}
+
+.stat-info h3 {
+  font-size: 2rem;
+  color: #1a1a1a;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-info .stat-desc {
+  color: #9ca3af;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  margin: 0;
 }
 
 /* Filters */

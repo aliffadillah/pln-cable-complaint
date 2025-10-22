@@ -235,38 +235,42 @@ export default function FieldOfficerDashboard() {
       <div className="stats-container">
         <div className="stat-card">
           <div className="stat-icon blue">
-            <ClipboardList size={32} />
+            <ClipboardList size={28} />
           </div>
           <div className="stat-info">
-            <h3>{complaints.filter(c => c.status === 'ASSIGNED').length}</h3>
-            <p>Tugas Baru</p>
+            <p className="stat-title">Total Laporan</p>
+            <h3>{complaints.length}</h3>
+            <p className="stat-desc">Semua laporan</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon orange">
-            <Truck size={32} />
+            <Truck size={28} />
           </div>
           <div className="stat-info">
-            <h3>{complaints.filter(c => c.status === 'ON_THE_WAY').length}</h3>
-            <p>Dalam Perjalanan</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon purple">
-            <Wrench size={32} />
-          </div>
-          <div className="stat-info">
-            <h3>{complaints.filter(c => c.status === 'WORKING').length}</h3>
-            <p>Sedang Dikerjakan</p>
+            <p className="stat-title">Menunggu Review</p>
+            <h3>{complaints.filter(c => c.status === 'ASSIGNED').length}</h3>
+            <p className="stat-desc">Perlu review</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-icon green">
-            <CheckCircle size={32} />
+            <CheckCircle size={28} />
           </div>
           <div className="stat-info">
+            <p className="stat-title">Disetujui</p>
             <h3>{complaints.filter(c => c.status === 'COMPLETED').length}</h3>
-            <p>Selesai</p>
+            <p className="stat-desc">Telah disetujui</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon red">
+            <Wrench size={28} />
+          </div>
+          <div className="stat-info">
+            <p className="stat-title">Perlu Revisi</p>
+            <h3>{complaints.filter(c => c.status === 'WORKING').length}</h3>
+            <p className="stat-desc">Perlu perbaikan</p>
           </div>
         </div>
       </div>

@@ -12,8 +12,6 @@ import {
   Clipboard,
   Calendar,
   CheckSquare,
-  FileText,
-  Users as UsersIcon,
   Plus,
   Search,
   Eye,
