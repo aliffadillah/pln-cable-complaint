@@ -1,6 +1,5 @@
 import { 
   LayoutDashboard, 
-  FileText, 
   Users, 
   CheckSquare, 
   BarChart3, 
@@ -46,13 +45,6 @@ function Sidebar({ isOpen, onClose, isAdmin, isPetugas, onLogout, activeSection 
         >
           <LayoutDashboard className="nav-icon" size={20} />
           <span className="nav-text">Overview</span>
-        </button>
-        <button 
-          className={`nav-item ${activeSection === 'complaints' ? 'active' : ''}`}
-          onClick={() => handleSectionClick('complaints')}
-        >
-          <FileText className="nav-icon" size={20} />
-          <span className="nav-text">Pengaduan</span>
         </button>
         {isAdmin && (
           <button 

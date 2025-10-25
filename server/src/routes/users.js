@@ -176,6 +176,67 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 })
 
+// Change password
+router.put('/:id/change-password', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params
+    const { currentPassword, newPassword } = req.body
+
+    // Check permission - can only change own password
+    if (req.user.id !== id) {
+      return res.status(403).json({ error: 'You can only change your own password' })
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' })
+    }
+
+    // Get user with password
+    const user = await prisma.user.findUnique({
+      where: { id }
+    })
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password)
+    if (!isValidPassword) {
+      return res.status(400).json({ error: 'Current password is incorrect' })
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+    // Update password
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword }
+    })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'CHANGE_PASSWORD',
+        details: 'User changed password'
+      }
+    })
+
+    res.json({ 
+      message: 'Password changed successfully'
+    })
+  } catch (error) {
+    console.error('Change password error:', error)
+    res.status(500).json({ error: 'Failed to change password' })
+  }
+})
+
 // Delete user (Admin only)
 router.delete('/:id', authenticate, isAdminUtama, async (req, res) => {
   try {

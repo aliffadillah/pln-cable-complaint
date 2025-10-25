@@ -772,17 +772,314 @@
   cursor: not-allowed;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #6b7280;
-}
-
 .loading {
   text-align: center;
   padding: 4rem;
   font-size: 1.25rem;
   color: #6b7280;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Report Detail Styles */
+.report-detail-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.detail-card {
+  background: #f9fafb;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.detail-card h4 {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.detail-card p {
+  color: #1a1a1a;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Settings Section */
+.settings-section {
+  min-height: calc(100vh - 200px);
+  width: 100%;
+  max-width: none;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.settings-tab:hover {
+  color: #0066cc;
+  background: #f9fafb;
+}
+
+.settings-tab.active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+}
+
+.settings-content {
+  display: grid;
+  gap: 2rem;
+  max-width: 100%;
+}
+
+.settings-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.settings-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e8ecef;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  height: fit-content;
+}
+
+.settings-card-header {
+  margin-bottom: 2rem;
+}
+
+.settings-card-header h3 {
+  font-size: 1.25rem;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.settings-card-header p {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.settings-card .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.settings-actions {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-actions .btn-primary:hover:not(:disabled) {
+  background: #0052a3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}
+
+.settings-actions .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.info-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.info-value {
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.password-requirements {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.password-requirements ul {
+  margin: 0;
+}
+
+.password-requirements li {
+  margin-bottom: 0.25rem;
+}
+
+.password-requirements li:last-child {
+  margin-bottom: 0;
+}
+
+/* Report Detail Styles (continued) */
+
+.cost-summary {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid #0066cc;
+}
+
+.cost-summary h4 {
+  color: #0066cc;
+  margin-bottom: 1rem;
+}
+
+.cost-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(0, 102, 204, 0.1);
+}
+
+.cost-item:last-child {
+  border-bottom: none;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #0066cc;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  border-top: 2px solid rgba(0, 102, 204, 0.2);
+}
+
+.cost-label {
+  color: #374151;
+  font-weight: 500;
+}
+
+.cost-value {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.photos-section {
+  margin-top: 1.5rem;
+}
+
+.photos-section h4 {
+  font-size: 1rem;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.photo-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.photo-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: #0066cc;
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 1024px) {
+  .settings-grid-2col {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 }
 
 @media (max-width: 768px) {
@@ -910,6 +1207,54 @@
 
   .modal-footer button {
     width: 100%;
+  }
+
+  /* Settings responsive */
+  .settings-tabs {
+    flex-direction: column;
+    gap: 0;
+    border-bottom: none;
+  }
+
+  .settings-tab {
+    border-bottom: 1px solid #e5e7eb;
+    border-left: 3px solid transparent;
+    padding: 1rem;
+    justify-content: flex-start;
+  }
+
+  .settings-tab.active {
+    border-bottom-color: #e5e7eb;
+    border-left-color: #0066cc;
+    background: #f0f9ff;
+  }
+
+  .settings-content {
+    max-width: 100%;
+  }
+
+  .settings-grid-2col {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .settings-card {
+    padding: 1.25rem;
+  }
+
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .settings-actions {
+    justify-content: stretch;
+  }
+
+  .settings-actions .btn-primary {
+    width: 100%;
+    justify-content: center;
   }
 }
 

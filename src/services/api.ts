@@ -78,6 +78,13 @@ export const usersApi = {
   delete: async (id: string) => {
     return apiCall(`/users/${id}`, { method: 'DELETE' })
   },
+
+  changePassword: async (id: string, currentPassword: string, newPassword: string) => {
+    return apiCall(`/users/${id}/change-password`, {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+  },
 }
 
 // Complaints API

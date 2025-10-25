@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
+import CustomAlert from '../components/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 import { complaintsApi, usersApi, workReportsApi } from '../services/api';
 import {
   Bell,
@@ -27,16 +29,23 @@ interface Complaint {
   title: string;
   description: string;
   location: string;
+  latitude?: number;
+  longitude?: number;
   priority: string;
   status: string;
   reporterName?: string;
   reporterEmail?: string;
   reporterPhone?: string;
-  assignedTo?: number;
+  assignedTo?: string;
   assignedToUser?: {
     name: string;
   };
+  images?: string[];
+  isPublic?: boolean;
   createdAt: string;
+  updatedAt?: string;
+  assignedAt?: string;
+  resolvedAt?: string;
 }
 
 interface UserData {
@@ -53,6 +62,7 @@ interface WorkReport {
   complaint: {
     ticketNumber: string;
     title: string;
+    location?: string;
     officer?: {
       id: string;
       name: string;
@@ -62,13 +72,26 @@ interface WorkReport {
   technician?: {
     name: string;
   };
+  workStartTime: string;
+  workEndTime: string;
   workDescription: string;
+  materialsUsed?: Array<{ name: string; quantity: number; unit: string }>;
+  laborCost?: number;
+  materialCost?: number;
+  totalCost?: number;
+  beforePhotos?: string[];
+  afterPhotos?: string[];
+  notes?: string;
+  technicianNotes?: string;
   reviewStatus: string;
-  materialCost: number;
-  laborCost: number;
-  totalCost: number;
+  reviewNotes?: string;
   submittedAt: string;
   createdAt: string;
+  reviewer?: {
+    id: string;
+    name: string;
+  };
+  reviewedAt?: string;
 }
 
 interface Stats {
@@ -81,6 +104,7 @@ interface Stats {
 
 export default function AdminDashboard() {
   const { user, logout, isAdmin } = useAuth();
+  const { alert, showSuccess, showError, showWarning, hideAlert } = useCustomAlert();
   const [activeSection, setActiveSection] = useState('overview');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -98,7 +122,7 @@ export default function AdminDashboard() {
   const unassignedComplaints = complaints.filter((complaint) => !complaint.assignedTo).length;
   const unresolvedComplaints = Math.max(stats.total - stats.resolved, 0);
   const pendingReviewReports = workReports.filter((report) => report.reviewStatus?.toUpperCase() !== 'APPROVED').length;
-  const fieldOfficerCandidates = users.filter((member) => member.role?.toLowerCase().includes('field'));
+  const fieldOfficerCandidates = users.filter((member) => member.role === 'PETUGAS_LAPANGAN');
   const totalFieldOfficers = fieldOfficerCandidates.length;
   const activeFieldOfficersOnly = fieldOfficerCandidates.filter((member) => member.isActive);
   const totalActiveOfficers = activeFieldOfficersOnly.length;
@@ -118,7 +142,9 @@ export default function AdminDashboard() {
 
   // Modal states
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string>('');
   const [showUserModal, setShowUserModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedWorkReport, setSelectedWorkReport] = useState<WorkReport | null>(null);
@@ -149,8 +175,8 @@ export default function AdminDashboard() {
         });
       }
       
-      // Fetch users for users section
-      if (activeSection === 'users' && isAdmin) {
+      // Always fetch users (needed for assign modal dropdown)
+      if (isAdmin) {
         console.log('Fetching users...');
         const usersData = await usersApi.getAll();
         console.log('Users data:', usersData);
@@ -168,7 +194,7 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      alert('Gagal memuat data: ' + (error as Error).message);
+      showError('Gagal memuat data: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -179,15 +205,16 @@ export default function AdminDashboard() {
     window.location.href = '/';
   };
 
-  const handleAssignComplaint = async (complaintId: number, userId: number) => {
+  const handleAssignComplaint = async (complaintId: number, userId: string) => {
     try {
-      await complaintsApi.assign(complaintId.toString(), userId.toString());
+      await complaintsApi.assign(complaintId.toString(), userId);
       await fetchData();
       setShowAssignModal(false);
-      alert('Petugas berhasil ditugaskan!');
+      setSelectedOfficerId('');
+      showSuccess('Petugas berhasil ditugaskan!');
     } catch (error) {
       console.error('Error assigning complaint:', error);
-      alert('Gagal menugaskan petugas');
+      showError('Gagal menugaskan petugas');
     }
   };
 
@@ -196,10 +223,10 @@ export default function AdminDashboard() {
       await workReportsApi.review(reportId.toString(), status, notes);
       await fetchData();
       setShowReviewModal(false);
-      alert('Review berhasil dikirim!');
+      showSuccess('Review berhasil dikirim!');
     } catch (error) {
       console.error('Error reviewing work report:', error);
-      alert('Gagal mereview laporan');
+      showError('Gagal mereview laporan');
     }
   };
 
@@ -208,10 +235,10 @@ export default function AdminDashboard() {
       await usersApi.create(data);
       setShowUserModal(false);
       await fetchData();
-      alert('User berhasil ditambahkan!');
+      showSuccess('User berhasil ditambahkan!');
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('Gagal menambahkan user: ' + (error as Error).message);
+      showError('Gagal menambahkan user: ' + (error as Error).message);
     }
   };
 
@@ -221,10 +248,10 @@ export default function AdminDashboard() {
     try {
       await usersApi.delete(userId.toString());
       await fetchData();
-      alert('User berhasil dihapus!');
+      showSuccess('User berhasil dihapus!');
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Gagal menghapus user');
+      showError('Gagal menghapus user');
     }
   };
 
@@ -340,7 +367,14 @@ export default function AdminDashboard() {
                       <td>{complaint.assignedToUser?.name || '-'}</td>
                       <td>
                         <div className="action-buttons">
-                          <button className="btn-sm btn-info" title="Lihat Detail">
+                          <button 
+                            className="btn-sm btn-info" 
+                            title="Lihat Detail"
+                            onClick={() => {
+                              setSelectedComplaint(complaint);
+                              setShowDetailModal(true);
+                            }}
+                          >
                             <Eye size={16} />
                             <span>Detail</span>
                           </button>
@@ -474,7 +508,14 @@ export default function AdminDashboard() {
                 <td>{complaint.assignedToUser?.name || '-'}</td>
                 <td>
                   <div className="action-buttons">
-                    <button className="btn-sm btn-info" title="Lihat Detail">
+                    <button 
+                      className="btn-sm btn-info" 
+                      title="Lihat Detail"
+                      onClick={() => {
+                        setSelectedComplaint(complaint);
+                        setShowDetailModal(true);
+                      }}
+                    >
                       <Eye size={16} />
                       <span>Detail</span>
                     </button>
@@ -756,11 +797,17 @@ export default function AdminDashboard() {
 
       {/* Assign Modal */}
       {showAssignModal && selectedComplaint && (
-        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setShowAssignModal(false);
+          setSelectedOfficerId('');
+        }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Tugaskan Petugas</h2>
-              <button className="close-btn" onClick={() => setShowAssignModal(false)}>×</button>
+              <button className="close-btn" onClick={() => {
+                setShowAssignModal(false);
+                setSelectedOfficerId('');
+              }}>×</button>
             </div>
             <div className="modal-body">
               <p><strong>Tiket:</strong> {selectedComplaint.ticketNumber}</p>
@@ -769,18 +816,173 @@ export default function AdminDashboard() {
                 <label>Pilih Petugas</label>
                 <select 
                   id="assign-user"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAssignComplaint(selectedComplaint.id, Number(e.target.value));
-                    }
-                  }}
+                  value={selectedOfficerId}
+                  onChange={(e) => setSelectedOfficerId(e.target.value)}
+                  disabled={users.filter(u => u.role === 'PETUGAS_LAPANGAN').length === 0}
                 >
                   <option value="">-- Pilih Petugas --</option>
-                  {users.filter(u => u.role === 'PETUGAS_LAPANGAN').map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
+                  {users.filter(u => u.role === 'PETUGAS_LAPANGAN').length === 0 ? (
+                    <option value="" disabled>Tidak ada petugas lapangan tersedia</option>
+                  ) : (
+                    users.filter(u => u.role === 'PETUGAS_LAPANGAN').map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} - {u.isActive ? '✓ Aktif' : '○ Nonaktif'}
+                      </option>
+                    ))
+                  )}
                 </select>
+                {users.filter(u => u.role === 'PETUGAS_LAPANGAN').length === 0 && (
+                  <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                    Belum ada petugas lapangan. Silakan tambah user dengan role "Petugas Lapangan" terlebih dahulu di menu Pengguna.
+                  </p>
+                )}
               </div>
+              
+              {selectedOfficerId && (
+                <div style={{ 
+                  marginTop: '1rem', 
+                  padding: '1rem', 
+                  backgroundColor: '#dbeafe', 
+                  borderRadius: '8px',
+                  border: '1px solid #60a5fa'
+                }}>
+                  <p style={{ margin: 0, color: '#1e40af', fontSize: '0.875rem', fontWeight: '600' }}>
+                    📌 Petugas yang dipilih: {users.find(u => u.id === Number(selectedOfficerId))?.name}
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0 0', color: '#1e40af', fontSize: '0.8125rem' }}>
+                    Klik tombol "Tugaskan" untuk mengkonfirmasi penugasan.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="btn-secondary"
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedOfficerId('');
+                }}
+              >
+                Batal
+              </button>
+              <button 
+                className="btn-primary"
+                onClick={() => {
+                  if (selectedOfficerId) {
+                    handleAssignComplaint(selectedComplaint.id, selectedOfficerId);
+                  }
+                }}
+                disabled={!selectedOfficerId}
+              >
+                Tugaskan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedComplaint && (
+        <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Detail Laporan Pengaduan</h2>
+              <button className="close-btn" onClick={() => setShowDetailModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {/* Informasi Tiket */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>🎫 Informasi Tiket</h3>
+                <div className="review-grid">
+                  <div><strong>Nomor Tiket:</strong> <code style={{ backgroundColor: '#f0f9ff', padding: '0.25rem 0.5rem', borderRadius: '4px', color: '#0066cc' }}>{selectedComplaint.ticketNumber}</code></div>
+                  <div><strong>Status:</strong> {getStatusBadge(selectedComplaint.status)}</div>
+                  <div><strong>Prioritas:</strong> {getPriorityBadge(selectedComplaint.priority)}</div>
+                  <div><strong>Tanggal Lapor:</strong> {new Date(selectedComplaint.createdAt).toLocaleString('id-ID')}</div>
+                  {selectedComplaint.assignedAt && (
+                    <div><strong>Ditugaskan:</strong> {new Date(selectedComplaint.assignedAt).toLocaleString('id-ID')}</div>
+                  )}
+                  {selectedComplaint.resolvedAt && (
+                    <div><strong>Diselesaikan:</strong> {new Date(selectedComplaint.resolvedAt).toLocaleString('id-ID')}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Informasi Pelapor */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>👤 Informasi Pelapor</h3>
+                <div className="review-grid">
+                  <div><strong>Nama:</strong> {selectedComplaint.reporterName || '-'}</div>
+                  <div><strong>Email:</strong> {selectedComplaint.reporterEmail || '-'}</div>
+                  <div><strong>Telepon:</strong> {selectedComplaint.reporterPhone || '-'}</div>
+                  <div><strong>Tipe Laporan:</strong> <span className="role-badge">{selectedComplaint.isPublic ? 'Publik' : 'Internal'}</span></div>
+                </div>
+              </div>
+
+              {/* Informasi Pengaduan */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📋 Detail Pengaduan</h3>
+                <div style={{ marginBottom: '1rem' }}>
+                  <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Judul:</strong>
+                  <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    {selectedComplaint.title}
+                  </p>
+                </div>
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Deskripsi:</strong>
+                  <p style={{ margin: 0, padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                    {selectedComplaint.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Lokasi */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📍 Lokasi</h3>
+                <div className="review-grid">
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Alamat:</strong> {selectedComplaint.location}</div>
+                  {selectedComplaint.latitude && selectedComplaint.longitude && (
+                    <>
+                      <div><strong>Latitude:</strong> {selectedComplaint.latitude}</div>
+                      <div><strong>Longitude:</strong> {selectedComplaint.longitude}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Foto Laporan */}
+              {selectedComplaint.images && selectedComplaint.images.length > 0 && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📷 Foto Laporan</h3>
+                  <div className="photo-grid">
+                    {selectedComplaint.images.map((image, index) => (
+                      <img 
+                        key={index} 
+                        src={image} 
+                        alt={`Foto ${index + 1}`}
+                        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #e5e7eb' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Petugas yang Ditugaskan */}
+              {selectedComplaint.assignedToUser && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>👷 Petugas yang Ditugaskan</h3>
+                  <div className="review-grid">
+                    <div><strong>Nama Petugas:</strong> {selectedComplaint.assignedToUser.name}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="btn-secondary"
+                onClick={() => setShowDetailModal(false)}
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
@@ -789,38 +991,195 @@ export default function AdminDashboard() {
       {/* Review Modal */}
       {showReviewModal && selectedWorkReport && (
         <div className="modal-overlay" onClick={() => setShowReviewModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Review Laporan Pengerjaan</h2>
               <button className="close-btn" onClick={() => setShowReviewModal(false)}>×</button>
             </div>
-            <div className="modal-body">
-              <p><strong>Petugas:</strong> {selectedWorkReport.complaint?.officer?.name || selectedWorkReport.technician?.name || '-'}</p>
-              <p><strong>Deskripsi:</strong> {selectedWorkReport.workDescription}</p>
-              <p><strong>Total Biaya:</strong> Rp {selectedWorkReport.totalCost?.toLocaleString('id-ID') || '0'}</p>
-              <div className="modal-actions">
-                <button 
-                  className="btn-success"
-                  onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'APPROVED')}
-                >
-                  ✓ Setujui
-                </button>
-                <button 
-                  className="btn-warning"
-                  onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'REVISION_NEEDED', 'Perlu revisi')}
-                >
-                  ⟳ Revisi
-                </button>
-                <button 
-                  className="btn-danger"
-                  onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'REJECTED', 'Ditolak')}
-                >
-                  × Tolak
-                </button>
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {/* Informasi Pengaduan */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📋 Informasi Pengaduan</h3>
+                <div className="review-grid">
+                  <div><strong>Tiket:</strong> {selectedWorkReport.complaint?.ticketNumber}</div>
+                  <div><strong>Judul:</strong> {selectedWorkReport.complaint?.title}</div>
+                  <div><strong>Lokasi:</strong> {selectedWorkReport.complaint?.location || '-'}</div>
+                  <div><strong>Petugas:</strong> {selectedWorkReport.complaint?.officer?.name || '-'}</div>
+                </div>
               </div>
+
+              {/* Waktu Pengerjaan */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>⏰ Waktu Pengerjaan</h3>
+                <div className="review-grid">
+                  <div><strong>Mulai:</strong> {new Date(selectedWorkReport.workStartTime).toLocaleString('id-ID')}</div>
+                  <div><strong>Selesai:</strong> {new Date(selectedWorkReport.workEndTime).toLocaleString('id-ID')}</div>
+                  <div><strong>Durasi:</strong> {(() => {
+                    const start = new Date(selectedWorkReport.workStartTime);
+                    const end = new Date(selectedWorkReport.workEndTime);
+                    const diffMs = end.getTime() - start.getTime();
+                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    return `${hours} jam ${minutes} menit`;
+                  })()}</div>
+                </div>
+              </div>
+
+              {/* Deskripsi Pekerjaan */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📝 Deskripsi Pekerjaan</h3>
+                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{selectedWorkReport.workDescription}</p>
+              </div>
+
+              {/* Material yang Digunakan */}
+              {selectedWorkReport.materialsUsed && selectedWorkReport.materialsUsed.length > 0 && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>🔧 Material yang Digunakan</h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f3f4f6' }}>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', border: '1px solid #e5e7eb' }}>Material</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #e5e7eb' }}>Jumlah</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #e5e7eb' }}>Satuan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedWorkReport.materialsUsed.map((material, index) => (
+                        <tr key={index}>
+                          <td style={{ padding: '0.5rem', border: '1px solid #e5e7eb' }}>{material.name}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #e5e7eb' }}>{material.quantity}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'center', border: '1px solid #e5e7eb' }}>{material.unit}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Rincian Biaya */}
+              <div className="review-section">
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>💰 Rincian Biaya</h3>
+                <div className="cost-breakdown">
+                  <div className="cost-row">
+                    <span>Biaya Material:</span>
+                    <span><strong>Rp {(selectedWorkReport.materialCost || 0).toLocaleString('id-ID')}</strong></span>
+                  </div>
+                  <div className="cost-row">
+                    <span>Biaya Tenaga Kerja:</span>
+                    <span><strong>Rp {(selectedWorkReport.laborCost || 0).toLocaleString('id-ID')}</strong></span>
+                  </div>
+                  <div className="cost-row" style={{ borderTop: '2px solid #1e40af', marginTop: '0.5rem', paddingTop: '0.5rem', fontSize: '1.1rem', color: '#1e40af' }}>
+                    <span><strong>Total Biaya:</strong></span>
+                    <span><strong>Rp {(selectedWorkReport.totalCost || 0).toLocaleString('id-ID')}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Foto Sebelum */}
+              {selectedWorkReport.beforePhotos && selectedWorkReport.beforePhotos.length > 0 && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📷 Foto Sebelum Pekerjaan</h3>
+                  <div className="photo-grid">
+                    {selectedWorkReport.beforePhotos.map((photo, index) => (
+                      <img 
+                        key={index} 
+                        src={photo} 
+                        alt={`Sebelum ${index + 1}`}
+                        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #e5e7eb' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Foto Sesudah */}
+              {selectedWorkReport.afterPhotos && selectedWorkReport.afterPhotos.length > 0 && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📷 Foto Sesudah Pekerjaan</h3>
+                  <div className="photo-grid">
+                    {selectedWorkReport.afterPhotos.map((photo, index) => (
+                      <img 
+                        key={index} 
+                        src={photo} 
+                        alt={`Sesudah ${index + 1}`}
+                        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #e5e7eb' }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Catatan Tambahan */}
+              {selectedWorkReport.notes && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>📌 Catatan Tambahan</h3>
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', backgroundColor: '#fef3c7', padding: '1rem', borderRadius: '8px' }}>{selectedWorkReport.notes}</p>
+                </div>
+              )}
+
+              {/* Catatan Teknisi */}
+              {selectedWorkReport.technicianNotes && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>🔧 Catatan Teknisi</h3>
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', backgroundColor: '#dbeafe', padding: '1rem', borderRadius: '8px' }}>{selectedWorkReport.technicianNotes}</p>
+                </div>
+              )}
+
+              {/* Informasi Review */}
+              {selectedWorkReport.reviewedAt && (
+                <div className="review-section">
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', color: '#1e40af' }}>✅ Informasi Review</h3>
+                  <div className="review-grid">
+                    <div><strong>Status:</strong> {getStatusBadge(selectedWorkReport.reviewStatus)}</div>
+                    <div><strong>Direview oleh:</strong> {selectedWorkReport.reviewer?.name || '-'}</div>
+                    <div><strong>Tanggal Review:</strong> {new Date(selectedWorkReport.reviewedAt).toLocaleString('id-ID')}</div>
+                    {selectedWorkReport.reviewNotes && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <strong>Catatan Review:</strong>
+                        <p style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f3f4f6', borderRadius: '6px' }}>{selectedWorkReport.reviewNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tombol Aksi */}
+              {selectedWorkReport.reviewStatus === 'PENDING' && (
+                <div className="modal-actions" style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '2px solid #e5e7eb' }}>
+                  <button 
+                    className="btn-success"
+                    onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'APPROVED')}
+                  >
+                    ✓ Setujui
+                  </button>
+                  <button 
+                    className="btn-warning"
+                    onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'REVISION_NEEDED', 'Perlu revisi')}
+                  >
+                    ⟳ Revisi
+                  </button>
+                  <button 
+                    className="btn-danger"
+                    onClick={() => handleReviewWorkReport(selectedWorkReport.id, 'REJECTED', 'Ditolak')}
+                  >
+                    × Tolak
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Custom Alert */}
+      {alert.isVisible && (
+        <CustomAlert
+          message={alert.message}
+          type={alert.type}
+          onClose={hideAlert}
+          autoClose={alert.autoClose}
+          duration={alert.duration}
+        />
       )}
     </div>
   );
