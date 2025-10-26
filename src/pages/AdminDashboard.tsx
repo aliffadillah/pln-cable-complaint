@@ -102,6 +102,124 @@ interface Stats {
   resolved: number;
 }
 
+// Edit User Form Component
+function EditUserForm({ 
+  user, 
+  onSubmit, 
+  onCancel 
+}: { 
+  user: UserData; 
+  onSubmit: (data: { name: string; email: string; role: string; isActive: boolean }) => void;
+  onCancel: () => void;
+}) {
+  const [selectedRole, setSelectedRole] = useState(user.role);
+  const [isActive, setIsActive] = useState(user.isActive);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    onSubmit({
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      role: selectedRole,
+      isActive: isActive
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-body">
+        <div className="form-group">
+          <label>Nama Lengkap</label>
+          <input 
+            type="text" 
+            name="name" 
+            className="form-control" 
+            defaultValue={user.name}
+            required 
+          />
+        </div>
+        <div className="form-group">
+          <label>Email</label>
+          <input 
+            type="email" 
+            name="email" 
+            className="form-control" 
+            defaultValue={user.email}
+            required 
+          />
+        </div>
+        <div className="form-group">
+          <label>Role</label>
+          <select 
+            name="role" 
+            className="form-control" 
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+            required
+          >
+            <option value="ADMIN_UTAMA">Admin Utama</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="PETUGAS_LAPANGAN">Petugas Lapangan</option>
+          </select>
+        </div>
+        
+        {/* Status Aktif/Nonaktif untuk Petugas Lapangan */}
+        {selectedRole === 'PETUGAS_LAPANGAN' && (
+          <div className="form-group">
+            <label className="status-toggle-label">
+              <span className="status-label-text">Status Petugas</span>
+              <div className="status-toggle-wrapper">
+                <input 
+                  type="radio" 
+                  name="isActive" 
+                  value="true" 
+                  checked={isActive}
+                  onChange={() => setIsActive(true)}
+                  className="status-radio"
+                  id="status-active"
+                />
+                <label htmlFor="status-active" className="status-option status-active">
+                  <CheckSquare size={18} />
+                  <span>Aktif</span>
+                </label>
+                
+                <input 
+                  type="radio" 
+                  name="isActive" 
+                  value="false" 
+                  checked={!isActive}
+                  onChange={() => setIsActive(false)}
+                  className="status-radio"
+                  id="status-inactive"
+                />
+                <label htmlFor="status-inactive" className="status-option status-inactive">
+                  <Trash2 size={18} />
+                  <span>Nonaktif</span>
+                </label>
+              </div>
+            </label>
+            <small className="form-hint">
+              {isActive ? 
+                '✓ Petugas dapat menerima penugasan laporan' : 
+                '✗ Petugas tidak dapat menerima penugasan baru'}
+            </small>
+          </div>
+        )}
+      </div>
+      <div className="modal-footer">
+        <button type="button" className="btn-secondary" onClick={onCancel}>
+          Batal
+        </button>
+        <button type="submit" className="btn-primary">
+          <CheckSquare size={18} />
+          Simpan Perubahan
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function AdminDashboard() {
   const { user, logout, isAdmin } = useAuth();
   const { alert, showSuccess, showError, showWarning, hideAlert } = useCustomAlert();
@@ -146,6 +264,8 @@ export default function AdminDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [selectedOfficerId, setSelectedOfficerId] = useState<string>('');
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedWorkReport, setSelectedWorkReport] = useState<WorkReport | null>(null);
   
@@ -252,6 +372,24 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error deleting user:', error);
       showError('Gagal menghapus user');
+    }
+  };
+
+  const handleEditUser = (userData: UserData) => {
+    setSelectedUser(userData);
+    setShowEditUserModal(true);
+  };
+
+  const handleUpdateUser = async (userId: number, data: { name: string; email: string; role: string; isActive: boolean }) => {
+    try {
+      await usersApi.update(userId.toString(), data);
+      await fetchData();
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      showSuccess('Data user berhasil diperbarui!');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      showError('Gagal memperbarui data user: ' + (error as Error).message);
     }
   };
 
@@ -427,29 +565,70 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="insight-card team-card">
-            <div className="panel-header minimal">
-              <h3>Tim Lapangan Aktif</h3>
-              <span className="panel-subtitle">{displayedOfficerCount || 0} petugas siap bertugas</span>
+          <div className="insight-card team-card-enhanced">
+            <div className="team-card-header">
+              <div className="team-header-content">
+                <div className="team-icon-wrapper">
+                  <User size={24} className="team-icon" />
+                </div>
+                <div>
+                  <h3>Tim Lapangan Aktif</h3>
+                  <span className="team-subtitle">
+                    <span className="team-count">{totalActiveOfficers}</span> dari <span className="team-total">{totalFieldOfficers}</span> petugas siap bertugas
+                  </span>
+                </div>
+              </div>
+              {totalActiveOfficers > 0 && (
+                <div className="team-progress-mini">
+                  <div 
+                    className="team-progress-fill" 
+                    style={{ width: `${(totalActiveOfficers / totalFieldOfficers) * 100}%` }}
+                  ></div>
+                </div>
+              )}
             </div>
-            <ul className="team-list">
+            <ul className="team-list-enhanced">
               {displayedFieldOfficers.length ? (
-                displayedFieldOfficers.map((officer) => (
-                  <li key={officer.id} className="team-member">
-                    <div className="team-avatar">{officer.name.slice(0, 2).toUpperCase()}</div>
-                    <div className="team-info">
-                      <span className="team-name">{officer.name}</span>
-                      <span className="team-email">{officer.email}</span>
+                displayedFieldOfficers.map((officer, index) => (
+                  <li key={officer.id} className="team-member-enhanced" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div className="team-member-left">
+                      <div className={`team-avatar-enhanced ${officer.isActive ? 'active' : 'inactive'}`}>
+                        {officer.name.slice(0, 2).toUpperCase()}
+                        <div className="avatar-status-indicator"></div>
+                      </div>
+                      <div className="team-info-enhanced">
+                        <span className="team-name-enhanced">{officer.name}</span>
+                        <span className="team-email-enhanced">{officer.email}</span>
+                      </div>
                     </div>
-                    <span className={`team-status ${officer.isActive ? 'active' : 'inactive'}`}>
-                      {officer.isActive ? 'Aktif' : 'Offline'}
-                    </span>
+                    <div className="team-status-wrapper">
+                      <span className={`team-status-badge ${officer.isActive ? 'active' : 'inactive'}`}>
+                        <span className="status-dot"></span>
+                        {officer.isActive ? 'Aktif' : 'Offline'}
+                      </span>
+                    </div>
                   </li>
                 ))
               ) : (
-                <li className="team-empty">Belum ada petugas lapangan terdaftar.</li>
+                <li className="team-empty-enhanced">
+                  <div className="empty-icon">
+                    <User size={48} />
+                  </div>
+                  <p className="empty-title">Belum Ada Petugas</p>
+                  <p className="empty-subtitle">Tambahkan petugas lapangan untuk memulai</p>
+                </li>
               )}
             </ul>
+            {totalFieldOfficers > 4 && (
+              <div className="team-card-footer">
+                <button 
+                  className="btn-view-all"
+                  onClick={() => setActiveSection('users')}
+                >
+                  Lihat Semua Petugas ({totalFieldOfficers})
+                </button>
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -589,7 +768,11 @@ export default function AdminDashboard() {
                   <td>{new Date(userData.createdAt).toLocaleDateString('id-ID')}</td>
                   <td>
                     <div className="action-buttons">
-                      <button className="btn-sm btn-info" title="Edit User">
+                      <button 
+                        className="btn-sm btn-info" 
+                        title="Edit User"
+                        onClick={() => handleEditUser(userData)}
+                      >
                         <Edit size={16} />
                         <span>Edit</span>
                       </button>
@@ -1167,6 +1350,23 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUserModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowEditUserModal(false)}>
+          <div className="modal-content modal-edit-user" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit User</h2>
+              <button className="modal-close" onClick={() => setShowEditUserModal(false)}>×</button>
+            </div>
+            <EditUserForm 
+              user={selectedUser}
+              onSubmit={(data) => handleUpdateUser(selectedUser.id, data)}
+              onCancel={() => setShowEditUserModal(false)}
+            />
           </div>
         </div>
       )}

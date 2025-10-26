@@ -110,6 +110,12 @@ export default function FieldOfficerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [workReport, setWorkReport] = useState<WorkReport>({
     complaintId: '',
     description: '',
@@ -208,10 +214,50 @@ export default function FieldOfficerDashboard() {
       await complaintsApi.updateStatus(complaintId, newStatus);
       await fetchAssignedComplaints();
       showSuccess('Status berhasil diupdate!');
+      setShowConfirmDialog(false);
+      setConfirmAction(null);
     } catch (error) {
       console.error('Error updating status:', error);
       showError('Gagal update status: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
+  };
+
+  const confirmStatusUpdate = (complaintId: string, newStatus: string, actionName: string) => {
+    const messages: Record<string, { title: string; message: string }> = {
+      'ON_THE_WAY': {
+        title: 'Konfirmasi Keberangkatan',
+        message: 'Apakah Anda yakin ingin mengubah status menjadi "Dalam Perjalanan"? Pastikan Anda sudah siap untuk menuju lokasi.'
+      },
+      'WORKING': {
+        title: 'Konfirmasi Mulai Pengerjaan',
+        message: 'Apakah Anda yakin ingin memulai pengerjaan? Pastikan Anda sudah berada di lokasi dan siap untuk bekerja.'
+      }
+    };
+
+    const dialogContent = messages[newStatus] || {
+      title: 'Konfirmasi Tindakan',
+      message: `Apakah Anda yakin ingin melakukan tindakan: ${actionName}?`
+    };
+
+    setConfirmAction({
+      title: dialogContent.title,
+      message: dialogContent.message,
+      onConfirm: () => handleUpdateStatus(complaintId, newStatus)
+    });
+    setShowConfirmDialog(true);
+  };
+
+  const confirmSubmitReport = (complaint: Complaint) => {
+    setConfirmAction({
+      title: 'Konfirmasi Submit Laporan',
+      message: 'Apakah Anda yakin ingin membuat laporan pengerjaan? Pastikan semua data sudah lengkap dan benar.',
+      onConfirm: () => {
+        setShowConfirmDialog(false);
+        setConfirmAction(null);
+        openWorkReportModal(complaint);
+      }
+    });
+    setShowConfirmDialog(true);
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'before' | 'after') => {
@@ -310,44 +356,54 @@ export default function FieldOfficerDashboard() {
       return;
     }
 
-    try {
-      setSubmitting(true);
-      
-      const reportData = {
-        complaintId: workReport.complaintId,
-        workStartTime: new Date().toISOString(),
-        workEndTime: new Date().toISOString(),
-        workDescription: workReport.workDone,
-        materialsUsed: workReport.materialUsed ? [{ 
-          name: workReport.materialUsed, 
-          quantity: 1,
-          unit: 'unit' 
-        }] : [],
-        laborCost: Number(workReport.laborCost) || 0,
-        materialCost: Number(workReport.materialCost) || 0,
-        notes: workReport.description,
-        beforePhotos: workReport.photosBefore,
-        afterPhotos: workReport.photosAfter,
-      };
-      
-      console.log('Submitting work report:', reportData);
-      const response = await workReportsApi.create(reportData);
-      console.log('Work report response:', response);
-      
-      setShowWorkReportModal(false);
-      showSuccess('Laporan pengerjaan berhasil dikirim!');
-      
-      // Refresh data
-      await fetchAssignedComplaints();
-      if (activeSection === 'reports') {
-        await fetchWorkReports();
+    // Confirm before submitting
+    setConfirmAction({
+      title: 'Konfirmasi Kirim Laporan',
+      message: 'Apakah Anda yakin ingin mengirim laporan pengerjaan ini? Setelah dikirim, laporan akan direview oleh admin. Pastikan semua data dan foto sudah benar.',
+      onConfirm: async () => {
+        try {
+          setSubmitting(true);
+          setShowConfirmDialog(false);
+          
+          const reportData = {
+            complaintId: workReport.complaintId,
+            workStartTime: new Date().toISOString(),
+            workEndTime: new Date().toISOString(),
+            workDescription: workReport.workDone,
+            materialsUsed: workReport.materialUsed ? [{ 
+              name: workReport.materialUsed, 
+              quantity: 1,
+              unit: 'unit' 
+            }] : [],
+            laborCost: Number(workReport.laborCost) || 0,
+            materialCost: Number(workReport.materialCost) || 0,
+            notes: workReport.description,
+            beforePhotos: workReport.photosBefore,
+            afterPhotos: workReport.photosAfter,
+          };
+          
+          console.log('Submitting work report:', reportData);
+          const response = await workReportsApi.create(reportData);
+          console.log('Work report response:', response);
+          
+          setShowWorkReportModal(false);
+          showSuccess('Laporan pengerjaan berhasil dikirim!');
+          
+          // Refresh data
+          await fetchAssignedComplaints();
+          if (activeSection === 'reports') {
+            await fetchWorkReports();
+          }
+        } catch (error) {
+          console.error('Error submitting work report:', error);
+          showError('Gagal mengirim laporan: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        } finally {
+          setSubmitting(false);
+          setConfirmAction(null);
+        }
       }
-    } catch (error) {
-      console.error('Error submitting work report:', error);
-      showError('Gagal mengirim laporan: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setSubmitting(false);
-    }
+    });
+    setShowConfirmDialog(true);
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -612,7 +668,7 @@ export default function FieldOfficerDashboard() {
                 {complaint.status === 'ASSIGNED' && (
                   <button 
                     className="btn-action btn-primary"
-                    onClick={() => handleUpdateStatus(complaint.id, 'ON_THE_WAY')}
+                    onClick={() => confirmStatusUpdate(complaint.id, 'ON_THE_WAY', 'Berangkat')}
                   >
                     <Truck size={18} />
                     Berangkat
@@ -621,7 +677,7 @@ export default function FieldOfficerDashboard() {
                 {complaint.status === 'ON_THE_WAY' && (
                   <button 
                     className="btn-action btn-primary"
-                    onClick={() => handleUpdateStatus(complaint.id, 'WORKING')}
+                    onClick={() => confirmStatusUpdate(complaint.id, 'WORKING', 'Mulai Pengerjaan')}
                   >
                     <Wrench size={18} />
                     Mulai Pengerjaan
@@ -630,7 +686,7 @@ export default function FieldOfficerDashboard() {
                 {complaint.status === 'WORKING' && (
                   <button 
                     className="btn-action btn-success"
-                    onClick={() => openWorkReportModal(complaint)}
+                    onClick={() => confirmSubmitReport(complaint)}
                   >
                     <ClipboardList size={18} />
                     Submit Laporan
@@ -1479,6 +1535,52 @@ export default function FieldOfficerDashboard() {
       
       {/* Mobile Overlay */}
       <div className={`mobile-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && confirmAction && (
+        <div className="modal-overlay" onClick={() => {
+          setShowConfirmDialog(false);
+          setConfirmAction(null);
+        }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{confirmAction.title}</h2>
+              <button className="close-btn" onClick={() => {
+                setShowConfirmDialog(false);
+                setConfirmAction(null);
+              }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ padding: '2rem' }}>
+              <p style={{ fontSize: '1rem', lineHeight: '1.6', color: '#4b5563', marginBottom: '2rem' }}>
+                {confirmAction.message}
+              </p>
+
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    setConfirmAction(null);
+                  }}
+                >
+                  Batal
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-primary"
+                  onClick={confirmAction.onConfirm}
+                >
+                  Ya, Lanjutkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Alert */}
       {alert.isVisible && (

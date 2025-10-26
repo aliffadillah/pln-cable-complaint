@@ -38,9 +38,8 @@ interface ComplaintData {
   }
 }
 
-const TrackComplaint = () => {
+const TrackComplaintContent = () => {
   const { ticketNumber: urlTicketNumber } = useParams()
-  const navigate = useNavigate()
   const [ticketNumber, setTicketNumber] = useState(urlTicketNumber || '')
   const [complaint, setComplaint] = useState<ComplaintData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -76,7 +75,9 @@ const TrackComplaint = () => {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    navigate(`/track/${ticketNumber}`)
+    if (ticketNumber) {
+      fetchComplaint(ticketNumber)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -111,9 +112,9 @@ const TrackComplaint = () => {
   }
 
   return (
-    <div className="track-complaint-page">
+    <div className="track-complaint-content">
       <div className="track-header">
-        <h1>Lacak Status Laporan</h1>
+        <h2>Lacak Status Laporan</h2>
         <p>Masukkan nomor tiket untuk melihat status laporan Anda</p>
       </div>
 
@@ -267,11 +268,42 @@ const TrackComplaint = () => {
         </div>
       )}
 
-      <div className="track-footer">
+      <div className="form-footer">
         <p>
           Belum punya laporan? <a href="/public-complaint">Buat laporan baru</a>
         </p>
       </div>
+    </div>
+  )
+}
+
+const TrackComplaint = () => {
+  const navigate = useNavigate()
+
+  return (
+    <div className="track-complaint-page">
+      <header className="public-header">
+        <div className="header-container">
+          <div className="logo-container" onClick={() => navigate('/')}>
+            <img src="/logo/pln.png" alt="PLN Logo" className="logo" />
+            <div className="logo-text">
+              <h1>PLN Care</h1>
+              <p>Sistem Pengaduan Kabel</p>
+            </div>
+          </div>
+          <button className="nav-button" onClick={() => navigate('/public-complaint')}>
+            Buat Laporan
+          </button>
+        </div>
+      </header>
+
+      <main className="public-main">
+        <TrackComplaintContent />
+      </main>
+
+      <footer className="public-footer">
+        <p>&copy; 2025 PLN Care. Semua hak cipta dilindungi.</p>
+      </footer>
     </div>
   )
 }

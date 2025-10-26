@@ -105,35 +105,19 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="stats">
-        <div className="stats-container">
-          <div className="stat-item">
-            <h3>10K+</h3>
-            <p>Laporan Terselesaikan</p>
-          </div>
-          <div className="stat-item">
-            <h3>95%</h3>
-            <p>Tingkat Kepuasan</p>
-          </div>
-          <div className="stat-item">
-            <h3>24/7</h3>
-            <p>Layanan Tersedia</p>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="cta">
         <div className="cta-container">
           <h2>Siap Melaporkan Masalah?</h2>
           <p>
-            Bergabunglah dengan ribuan pengguna yang telah merasakan 
-            kemudahan sistem pengaduan PLN Care.
+        Bergabunglah dengan ribuan pengguna yang telah merasakan 
+        kemudahan sistem pengaduan PLN Care.
           </p>
-          <button className="btn-primary" onClick={() => navigate('/public-complaint')}>
-            Mulai Sekarang
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button className="btn-primary" onClick={() => navigate('/public-complaint')}>
+          Mulai Sekarang
+        </button>
+          </div>
         </div>
       </section>
 
